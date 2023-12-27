@@ -89,12 +89,12 @@ class ClientThread(threading.Thread):
                     finally:
                         self.lock.release()
 
-                    onlinePeers[username] = {"host": self.host, "port": port}
-                    self.udpServer = UDPServer(self.username, self.tcpClientSocket)
-                    self.udpServer.start()
-                    self.udpServer.timer.start()
-                    print("{} is logged in".format(self.username))
-                    response = "login-success"
+                        onlinePeers[username] = {"host": self.host, "port": port}
+                        self.udpServer = UDPServer(self.username, self.tcpClientSocket)
+                        self.udpServer.start()
+                        self.udpServer.timer.start()
+                        print("{} is logged in".format(self.username))
+                        response = "login-success"
 
                 else:
                     response = "login-fail"
@@ -191,7 +191,6 @@ class UDPServer(threading.Thread):
             for key in chatrooms.keys():
                 if self.username in chatrooms[key]:
                     chatrooms[key].remove(self.username)
-        self.tcpClientSocket.close()
         print("Removed {} from online peers".format(self.username))
         self.username = None
 
