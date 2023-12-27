@@ -21,34 +21,39 @@ class PeerServer(threading.Thread):
             # monitors for the incoming connections
             readable, writable, exceptional = select.select(self.inputs, [], [])
             for sock in readable:
-                # if the socket that is receiving the connection is the tcp socket of the peer's server, enters here
-                if sock is self.peerServerSocket:
-                    # accepts the connection, and adds its connection socket to the inputs list
-                    if self.username == None:
-                        break
-                    connectedPeerSocket, addr = sock.accept()
-                    self.inputs.append(connectedPeerSocket)
+                try:
+                    # if the socket that is receiving the connection is the tcp socket of the peer's server, enters here
+                    if sock is self.peerServerSocket:
+                        # accepts the connection, and adds its connection socket to the inputs list
+                        if self.username == None:
+                            break
+                        connectedPeerSocket, addr = sock.accept()
+                        self.inputs.append(connectedPeerSocket)
 
-                # if the socket that receives the data is used to communicate with a connected peer, then enters here
-                else:
-                    message = sock.recv(1024).decode().split("\n")
-                    if len(message) == 0:
-                        self.inputs.remove(sock)
-                    elif message[0] == "chatroom-join":
-                        print(message[1] + " has joined the chatroom.")
-                        peer = message[2].split(",")
-                        peerHost = peer[0]
-                        peerPort = int(peer[1])
-                        sock = socket(AF_INET, SOCK_STREAM)
-                        sock.connect((peerHost, peerPort))
-                        connectedPeers.append(sock)
-                    elif message[0] == "chatroom-leave":
-                        print(message[1] + " has left the chatroom.")
-                        self.inputs.remove(sock)
-                    elif message[0] == "chat-message":
-                        username = message[1]
-                        content = "\n".join(message[2:])
-                        print(username + " -> " + content)
+                    # if the socket that receives the data is used to communicate with a connected peer, then enters here
+                    else:
+                        message = sock.recv(1024).decode().split("\n")
+                        if len(message) == 0:
+                            sock.close()
+                            self.inputs.remove(sock)
+                        elif message[0] == "chatroom-join":
+                            print(message[1] + " has joined the chatroom.")
+                            peer = message[2].split(",")
+                            peerHost = peer[0]
+                            peerPort = int(peer[1])
+                            sock = socket(AF_INET, SOCK_STREAM)
+                            sock.connect((peerHost, peerPort))
+                            connectedPeers.append(sock)
+                        elif message[0] == "chatroom-leave":
+                            print(message[1] + " has left the chatroom.")
+                            sock.close()
+                            self.inputs.remove(sock)
+                        elif message[0] == "chat-message":
+                            username = message[1]
+                            content = "\n".join(message[2:])
+                            print(username + " -> " + content)
+                except:
+                    pass
 
 
 class PeerClient(threading.Thread):
@@ -79,7 +84,10 @@ class PeerClient(threading.Thread):
                 message = "chat-message\n{}\n{}".format(self.username, content)
 
             for sock in connectedPeers:
-                sock.send(message.encode())
+                try:
+                    sock.send(message.encode())
+                except:
+                    pass
 
             if content == ":quit":
                 self.chatroom = None
@@ -295,8 +303,12 @@ class peerMain:
                 self.peerClient.start()
                 self.peerClient.join()
                 # This section will only run after user quits the chatroom
-                message = "chatroom-leave-request"
-                self.tcpClientSocket.send(message.encode())
+                if (self.peerServer) and (len(self.peerServer.inputs) > 1):
+                    for sock in self.peerServer.inputs[1:]:
+                        sock.close()
+                    self.peerServer.inputs = [self.peerServer.inputs[0]]
+
+                self.tcpClientSocket.send("chatroom-leave-request".encode())
 
     def chatroomList(self):
         message = "chatroom-list-request"

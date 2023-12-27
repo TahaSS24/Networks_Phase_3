@@ -187,9 +187,10 @@ class UDPServer(threading.Thread):
             del onlinePeers[self.username]
         if self.username in tcpThreads:
             del tcpThreads[self.username]
-        if chatrooms.keys() != None:
+        if len(chatrooms.keys()) != 0:
             for key in chatrooms.keys():
-                chatrooms[key].remove(self.username)
+                if self.username in chatrooms[key]:
+                    chatrooms[key].remove(self.username)
         self.tcpClientSocket.close()
         print("Removed {} from online peers".format(self.username))
         self.username = None
